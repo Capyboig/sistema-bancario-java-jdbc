@@ -68,4 +68,89 @@ public class CuentaDAO {
         return cuentaEncontrada;
     }
 
+
+    public boolean transferir(String ibanOrigen, String ibanDestino, double cantidad) {
+
+
+        Connection con = null;
+        PreparedStatement pstRestar = null;
+        PreparedStatement pstSumar = null;
+
+
+        String sqlRestar = "UPDATE cuentas SET saldo = saldo - ? WHERE iban = ?";
+        String sqlSumar  = "UPDATE cuentas SET saldo = saldo + ? WHERE iban = ?";
+
+        try {
+
+
+            con = ConexionBD.conectar();
+
+
+            con.setAutoCommit(false);
+
+
+
+
+            pstRestar = con.prepareStatement(sqlRestar);
+
+
+
+            pstRestar.setDouble(1, cantidad);
+            pstRestar.setString(2, ibanOrigen);
+
+
+            int filasRestadas = pstRestar.executeUpdate();
+
+
+            pstSumar = con.prepareStatement(sqlSumar);
+
+
+            pstSumar.setDouble(1, cantidad);
+            pstSumar.setString(2, ibanDestino);
+
+
+            int filasSumadas = pstSumar.executeUpdate();
+
+
+
+            if (filasRestadas > 0 && filasSumadas > 0) {
+
+                con.commit();
+                System.out.println("[EXITO] Dinero movido correctamente.");
+                return true;
+            } else {
+
+                con.rollback();
+                System.out.println("[ERROR]Uno de los IBAN no es correcto. Deshaciendo...");
+                return false;
+            }
+
+        } catch (SQLException e) {
+
+            try {
+
+                if (con != null) con.rollback();
+                System.out.println("[ERROR GRAVE] Se hizo Rollback por motivos de seguridad (Se revirtieron los cambios).");
+            } catch (SQLException ex) {
+                System.out.println("[ERROR GRAVE] intentando hacer rollback: " + ex.getMessage());
+            }
+            return false;
+
+        } finally {
+
+            try {
+                if (pstRestar != null) pstRestar.close();
+                if (pstSumar != null) pstSumar.close();
+                if (con != null) {
+                    con.setAutoCommit(true);
+                    con.close();
+                }
+            } catch (SQLException e) {
+                System.out.println("[ERROR] cerrando recursos");
+            }
+        }
+    }
+
+
+
 }
